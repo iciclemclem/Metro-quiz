@@ -4,16 +4,28 @@ import { METRO_DATA } from './data.js';
 export class MetroMap {
     constructor(containerId, onStationClick) {
         this.container = document.getElementById(containerId);
-        this.onStationClick = onStationClick; // Callback quand on clique sur une station
+        this.onStationClick = onStationClick;
         this.svg = null;
+        
+        // Bornes géographiques de l'Île-de-France ajustées au réseau métro (pour le cadrage)
+        this.geoBounds = {
+            minLng: 2.2200, // Ouest (La Défense)
+            maxLng: 2.4600, // Est (Vincennes)
+            minLat: 48.7100, // Sud (Orly)
+            maxLat: 48.9300  // Nord (Mairie de Saint-Ouen)
+        };
+        
+        // Dimensions logiques de notre espace de dessin SVG
+        this.svgWidth = 800;
+        this.svgHeight = 800;
     }
 
     init() {
         if (!this.container) return;
         
-        // Création du SVG avec une viewBox adaptative (Largeur 500, Hauteur 400 pour notre schéma)
+        // Injection du SVG avec une ViewBox carrée et propre
         this.container.innerHTML = `
-            <svg id="metro-svg" viewBox="0 0 500 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <svg id="metro-svg" viewBox="0 0 ${this.svgWidth} ${this.svgHeight}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
                 <g id="svg-lines"></g>
                 <g id="svg-stations"></g>
             </svg>
@@ -23,82 +35,97 @@ export class MetroMap {
         this.render();
     }
 
+    // Convertit les coordonnées GPS (Lat, Lng) en pixels (X, Y) pour le SVG
+    project(lat, lng) {
+        // Échelle Linéaire (Mercator simplifiée pour une petite zone comme Paris)
+        const x = ((lng - this.geoBounds.minLng) / (this.geoBounds.maxLng - this.geoBounds.minLng)) * this.svgWidth;
+        
+        // En SVG, l'axe Y est inversé (le haut est 0), donc on soustrait à la hauteur max
+        const y = this.svgHeight - (((lat - this.geoBounds.minLat) / (this.geoBounds.maxLat - this.geoBounds.minLat)) * this.svgHeight);
+        
+        return { x, y };
+    }
+
     render() {
         const linesContainer = document.getElementById('svg-lines');
         const stationsContainer = document.getElementById('svg-stations');
 
-        // 1. Dessiner les lignes (Relier les stations qui partagent une ligne)
-        // Pour un proto simple, on trace des lignes directes entre stations partageant la même ligne
+        // Nettoyage au cas où
+        linesContainer.innerHTML = '';
+        stationsContainer.innerHTML = '';
+
+        // 1. DESSINER LES LIGNES
         Object.keys(METRO_DATA.lines).forEach(lineId => {
             const lineInfo = METRO_DATA.lines[lineId];
-            const lineStations = METRO_DATA.stations.filter(s => s.lines.includes(lineId));
             
-            // Tracé d'un chemin simple liant les stations de la ligne dans l'ordre du tableau
+            // On récupère et projette les stations de cette ligne
+            const lineStations = METRO_DATA.stations
+                .filter(s => s.lines.includes(lineId))
+                .map(s => this.project(s.gps.lat, s.gps.lng));
+            
+            // Si on a assez de points, on trace la ligne
             if (lineStations.length > 1) {
                 let pathData = `M ${lineStations[0].x} ${lineStations[0].y}`;
                 for (let i = 1; i < lineStations.length; i++) {
                     pathData += ` L ${lineStations[i].x} ${lineStations[i].y}`;
                 }
 
-                const polyline = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                polyline.setAttribute("d", pathData);
-                polyline.setAttribute("stroke", lineInfo.color);
-                polyline.setAttribute("stroke-width", "6");
-                polyline.setAttribute("fill", "none");
-                polyline.setAttribute("stroke-linecap", "round");
-                polyline.setAttribute("stroke-linejoin", "round");
-                linesContainer.appendChild(polyline);
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("d", pathData);
+                path.setAttribute("stroke", lineInfo.color);
+                path.setAttribute("stroke-width", "5");
+                path.setAttribute("fill", "none");
+                path.setAttribute("stroke-linecap", "round");
+                path.setAttribute("stroke-linejoin", "round");
+                linesContainer.appendChild(path);
             }
         });
 
-        // 2. Dessiner les stations (Les points cliquables)
+        // 2. DESSINER LES STATIONS
         METRO_DATA.stations.forEach(station => {
+            const { x, y } = this.project(station.gps.lat, station.gps.lng);
+
             const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
             group.setAttribute("class", "station-node");
             group.setAttribute("data-id", station.id);
 
-            // Le rond de la station
+            // Le point blanc de la station
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", station.x);
-            circle.setAttribute("cy", station.y);
-            circle.setAttribute("r", station.lines.length > 1 ? "8" : "6"); // Plus grand si correspondance
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", station.lines.length > 1 ? "8" : "5"); // Plus gros si correspondance
             circle.setAttribute("fill", "#FFFFFF");
-            circle.setAttribute("stroke", "#000000");
+            circle.setAttribute("stroke", "#1c1c1e");
             circle.setAttribute("stroke-width", "2");
 
-            // Le texte (Nom de la station) - décalé légèrement vers le haut
+            // Le texte (Nom + Arrondissement en plus petit)
             const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            text.setAttribute("x", station.x);
-            text.setAttribute("y", station.y - 12);
+            text.setAttribute("x", x);
+            text.setAttribute("y", y - 12); // Décalé vers le haut par défaut
             text.setAttribute("text-anchor", "middle");
-            text.setAttribute("font-size", "10");
-            text.setAttribute("font-family", "sans-serif");
-            text.setAttribute("font-weight", "bold");
+            text.setAttribute("font-size", "11");
+            text.setAttribute("font-family", "-apple-system, BlinkMacSystemFont, sans-serif");
+            text.setAttribute("font-weight", "600");
+            text.setAttribute("fill", "#1c1c1e");
             text.textContent = station.name;
 
             group.appendChild(circle);
             group.appendChild(text);
 
-            // Événement de clic/touch
+            // Gestion de l'interaction tactile/clic
             group.addEventListener('click', () => {
-                if (this.onStationClick) {
-                    this.onStationClick(station);
-                }
+                if (this.onStationClick) this.onStationClick(station);
             });
 
             stationsContainer.appendChild(group);
         });
     }
 
-    // Méthode pour colorer une station (ex: Vert si juste, Rouge si faux)
     highlightStation(stationId, className) {
         const node = this.svg.querySelector(`[data-id="${stationId}"] circle`);
-        if (node) {
-            node.setAttribute("class", className);
-        }
+        if (node) node.setAttribute("class", className);
     }
 
-    // Réinitialiser les couleurs des stations
     resetHighlights() {
         this.svg.querySelectorAll('.station-node circle').forEach(circle => {
             circle.removeAttribute("class");
