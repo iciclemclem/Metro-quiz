@@ -1,4 +1,4 @@
-function renderMap(activeLine = null, onStationClick = null) {
+function renderMap(activeLine = null, onClick = null, highlightId = null) {
 
   const container = document.getElementById("map");
 
@@ -6,13 +6,11 @@ function renderMap(activeLine = null, onStationClick = null) {
 
   // LIGNES
   lines.forEach(line => {
+    const pts = stations.filter(s => s.lines.includes(line.id));
 
-    const path = stations.filter(s => s.lines.includes(line.id));
-
-    for (let i = 0; i < path.length - 1; i++) {
-
-      const a = path[i];
-      const b = path[i + 1];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
 
       const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
 
@@ -20,7 +18,6 @@ function renderMap(activeLine = null, onStationClick = null) {
       el.setAttribute("y1", a.y);
       el.setAttribute("x2", b.x);
       el.setAttribute("y2", b.y);
-
       el.setAttribute("stroke", line.color);
       el.setAttribute("stroke-width", "4");
 
@@ -31,24 +28,23 @@ function renderMap(activeLine = null, onStationClick = null) {
   // STATIONS
   stations.forEach(s => {
 
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
 
-    circle.setAttribute("cx", s.x);
-    circle.setAttribute("cy", s.y);
-    circle.setAttribute("r", "7");
+    c.setAttribute("cx", s.x);
+    c.setAttribute("cy", s.y);
+    c.setAttribute("r", highlightId === s.id ? 10 : 7);
 
-    const visible =
-      activeLine === null || s.lines.includes(activeLine);
+    c.setAttribute("fill", highlightId === s.id ? "#00ff88" : "white");
 
-    circle.setAttribute("fill", visible ? "white" : "#444");
+    c.style.cursor = "pointer";
 
-    circle.style.cursor = "pointer";
+    const visible = !activeLine || s.lines.includes(activeLine);
 
-    circle.onclick = () => {
-      if (onStationClick) onStationClick(s);
-    };
+    c.setAttribute("opacity", visible ? "1" : "0.2");
 
-    svg.appendChild(circle);
+    c.onclick = () => onClick && onClick(s);
+
+    svg.appendChild(c);
   });
 
   container.innerHTML = "";
