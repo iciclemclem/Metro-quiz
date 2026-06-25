@@ -1,19 +1,18 @@
 // app.js
 import { MetroMap } from './map.js';
 
-// Fonction temporaire pour simuler le comportement au clic
 function handleStationClick(station) {
     const hud = document.getElementById('quiz-hud');
-    hud.innerHTML = `Station cliquée : <strong>${station.name}</strong> (Lignes: ${station.lines.join(', ')})`;
+    // On affiche maintenant la zone géographique (ex: Paris 1er, Bagneux...)
+    hud.innerHTML = `
+        <strong>${station.name}</strong> (${station.zone})<br>
+        <span style="font-size:0.85rem; color:#8e8e93;">Lignes : ${station.lines.join(', ')}</span>
+    `;
     
-    // Exemple d'animation flash verte sur la station cliquée
     map.highlightStation(station.id, 'success');
-    setTimeout(() => {
-        map.resetHighlights();
-    }, 1000);
+    setTimeout(() => map.resetHighlights(), 800);
 }
 
-// Initialisation de la carte dans le div #map-wrapper
 const map = new MetroMap('map-wrapper', handleStationClick);
 document.addEventListener('DOMContentLoaded', () => {
     map.init();
