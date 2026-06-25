@@ -1,32 +1,28 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Metro Quiz IDF</title>
-
-  <link rel="stylesheet" href="style.css"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Metro Quiz IDF</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+    <div id="app-container">
+        <header>
+            <h1>🚇 Metro Quiz IDF</h1>
+            <div id="quiz-hud">Clique sur une station pour tester</div>
+        </header>
 
-<header>
-  <h1>🚇 Metro Quiz IDF</h1>
-</header>
+        <main id="map-wrapper">
+            </main>
 
-<nav>
-  <button onclick="goHome()">Accueil</button>
-  <button onclick="setMode('revision')">Révision</button>
-  <button onclick="setMode('quiz')">Quiz</button>
-</nav>
+        <nav id="bottom-bar">
+            <button class="nav-btn active">Accueil</button>
+            <button class="nav-btn">Révision</button>
+            <button class="nav-btn">Quiz</button>
+        </nav>
+    </div>
 
-<section id="ui"></section>
-
-<section id="map"></section>
-
-<script src="data.js"></script>
-<script src="map.js"></script>
-<script src="app.js"></script>
-
+    <script type="module" src="app.js"></script>
 </body>
 </html>
