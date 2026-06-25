@@ -1,144 +1,86 @@
-let currentMode = "";
-let selectedLine = null;
+let mode = "home";
+let currentLine = null;
+let currentQuestion = null;
+let score = 0;
 
-const selector = document.getElementById("lineSelector");
-const content = document.getElementById("content");
+function goHome() {
+  mode = "home";
+  document.getElementById("ui").innerHTML = `
+    <h2>Choisis une ligne</h2>
+    ${lines.map(l =>
+      `<button onclick="selectLine(${l.id})">Ligne ${l.id}</button>`
+    ).join("")}
+  `;
 
-createLineButtons();
-
-function createLineButtons(){
-
-    selector.innerHTML="";
-
-    Object.keys(lines).forEach(line=>{
-
-        const div=document.createElement("div");
-
-        div.className="line-card";
-        div.style.background=lines[line].color;
-        div.style.color="#000";
-        div.textContent=line;
-
-        div.onclick=()=>selectLine(line);
-
-        selector.appendChild(div);
-
-    });
-
+  renderMap();
 }
 
-function showRevision(){
-    currentMode="revision";
-    content.innerHTML="<h2>Sélectionnez une ligne</h2>";
+function setMode(m) {
+  mode = m;
+  goHome();
 }
 
-function showQuiz(){
-    currentMode="quiz";
-    content.innerHTML="<h2>Sélectionnez une ligne</h2>";
+function selectLine(lineId) {
+  currentLine = lineId;
+
+  if (mode === "quiz") startQuiz();
+  if (mode === "revision") showRevision();
 }
 
-function selectLine(line){
+function showRevision() {
+  document.getElementById("ui").innerHTML =
+    `<h2>Révision Ligne ${currentLine}</h2>`;
 
-    selectedLine=line;
-
-    if(currentMode==="revision"){
-        renderRevision();
-    }
-
-    if(currentMode==="quiz"){
-        startQuiz();
-    }
-
+  renderMap(currentLine);
 }
 
-function renderRevision(){
+function startQuiz() {
 
-    const data=lines[selectedLine];
+  score = 0;
 
-    let html=`
-        <h2>Ligne ${selectedLine}</h2>
-        <div class="map">
+  nextQuestion();
+}
+
+function nextQuestion() {
+
+  const filtered = stations.filter(s =>
+    s.lines.includes(currentLine)
+  );
+
+  currentQuestion =
+    filtered[Math.floor(Math.random() * filtered.length)];
+
+  document.getElementById("ui").innerHTML = `
+    <h2>Quiz Ligne ${currentLine}</h2>
+    <p>👉 Trouve : <b>${currentQuestion.name}</b></p>
+    <p>Score : ${score}</p>
+  `;
+
+  renderMap(currentLine, handleAnswer);
+}
+
+function handleAnswer(station) {
+
+  const ui = document.getElementById("ui");
+
+  if (station.id === currentQuestion.id) {
+    score++;
+
+    ui.innerHTML = `
+      <h2>✔ Bonne réponse</h2>
+      <p>${station.name}</p>
+      <p>Score : ${score}</p>
     `;
-
-    data.stations.forEach(station=>{
-
-        html+=`
-            <span style="color:${data.color}">
-                ●
-            </span>
-        `;
-
-    });
-
-    html+=`</div><div class="station-list">`;
-
-    data.stations.forEach(station=>{
-
-        html+=`
-            <div class="station">
-                ${station}
-            </div>
-        `;
-
-    });
-
-    html+=`</div>`;
-
-    content.innerHTML=html;
-
-}
-
-function startQuiz(){
-
-    const data=lines[selectedLine];
-
-    const target=
-        data.stations[
-            Math.floor(Math.random()*data.stations.length)
-        ];
-
-    let html=`
-        <h2>Ligne ${selectedLine}</h2>
-
-        <h3>Trouve :</h3>
-
-        <p>${target}</p>
-
-        <div class="map">
+  } else {
+    ui.innerHTML = `
+      <h2>✖ Faux</h2>
+      <p>Bonne réponse : ${currentQuestion.name}</p>
+      <p>Score : ${score}</p>
     `;
+  }
 
-    data.stations.forEach(station=>{
-
-        html+=`
-        <span
-            class="station-dot"
-            onclick="checkAnswer('${station}','${target}')">
-        </span>
-        `;
-
-    });
-
-    html+=`</div>`;
-
-    content.innerHTML=html;
-
+  setTimeout(nextQuestion, 800);
 }
 
-function checkAnswer(clicked,target){
-
-    if(clicked===target){
-
-        alert("Bonne réponse ✅");
-
-    }else{
-
-        alert(
-            "Mauvaise réponse ❌\n" +
-            "Tu as choisi : " + clicked
-        );
-
-    }
-
-    startQuiz();
-
-}
+// init
+goHome();
